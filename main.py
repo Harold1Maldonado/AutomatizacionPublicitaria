@@ -29,11 +29,14 @@ DRY_RUN = "--dry-run" in sys.argv
 def parse_max_posts(argv: list[str]) -> int:
     """
     Lee --max-posts N de la línea de comandos.
-    Default = 3
-    Seguridad: 1..3 (porque un post será de hasta 3 fotos).
+    Default = 5
+    Seguridad: 1..5 ( 5 fotos).
     """
+    # if "--max-posts" not in argv:
+    # return 5
+
     if "--max-posts" not in argv:
-        return 3
+        return 5
 
     idx = argv.index("--max-posts")
     if idx == len(argv) - 1:
@@ -44,8 +47,10 @@ def parse_max_posts(argv: list[str]) -> int:
     except ValueError:
         raise RuntimeError("El valor de --max-posts debe ser un entero.")
 
-    if n < 1 or n > 3:
-        raise RuntimeError("--max-posts debe estar entre 1 y 3.")
+     # if n < 1 or n > 5:
+    #   raise RuntimeError("--max-posts debe estar entre 1 y 5.")
+    if n < 1 or n > 5:
+        raise RuntimeError("--max-posts debe estar entre 1 y 5.")
     return n
 
 
@@ -60,17 +65,13 @@ def post_form_with_retries(
     tries: int = 3,
     backoff_seconds: float = 1.0,
 ) -> dict:
-    """
-    POST x-www-form-urlencoded a Graph API con reintentos cortos (útil para 500 intermitentes).
-    Valida también casos de 200 con {"error": ...}.
-    """
+
     last_status = None
     last_data = None
 
     for attempt in range(1, tries + 1):
         r = requests.post(endpoint, data=payload, timeout=timeout)
 
-        # Intenta parsear JSON; si no, conserva el raw
         try:
             data = r.json()
         except Exception:
@@ -83,9 +84,8 @@ def post_form_with_retries(
         last_status = r.status_code
         last_data = data
 
-        # Reintentar sólo en 500 (o errores genéricos)
         if r.status_code == 500 and attempt < tries:
-            # backoff exponencial suave
+
             sleep_for = backoff_seconds * (2 ** (attempt - 1))
             time.sleep(sleep_for)
             continue
@@ -98,14 +98,12 @@ def post_form_with_retries(
 
 def upload_photo_unpublished(image_url: str) -> str:
     """
-    Sube una foto a Facebook como no publicada y devuelve su media_fbid.
+    Sube una foto a Facebook como NO PUBLISH y devuelve su media_fbid --> info with URL ID from FB.
     """
     endpoint = f"https://graph.facebook.com/{FB_GRAPH_VERSION}/{FB_PAGE_ID}/photos"
     payload = {
         "url": image_url,
         "access_token": FB_PAGE_ACCESS_TOKEN,
-        # Para Graph, esto suele funcionar bien como string.
-        # Si quieres probar boolean, cámbialo a False.
         "published": "false",
     }
 
@@ -120,8 +118,6 @@ def upload_photo_unpublished(image_url: str) -> str:
 
 def create_feed_post_with_media(message: str, media_fbids: list[str]) -> dict:
     """
-    Crea un post en el feed con varias fotos adjuntas.
-
     IMPORTANTE: attached_media[*] debe ir como string JSON, no como dict Python.
     """
     endpoint = f"https://graph.facebook.com/{FB_GRAPH_VERSION}/{FB_PAGE_ID}/feed"
@@ -145,9 +141,8 @@ def build_multi_message(items: list[dict]) -> str:
 
     lines: list[str] = []
     for it in items:
-        # Nota: incluir img_url en el texto no es obligatorio (las fotos ya van adjuntas),
-        # pero lo mantengo para no cambiar tu formato.
-        lines.append(f'{it["product"]} - {it["list_price"]} - {it["img_url"]}')
+
+        lines.append(f'{it["product"]} - {it["list_price"]}')
 
     return header + "\n\n" + "\n".join(lines)
 
@@ -170,7 +165,7 @@ if __name__ == "__main__":
         print("\nProductos seleccionados:")
         for it in items:
             print(
-                f'- product_id={it["product_id"]} | {it["product"]} | {it["list_price"]}')
+                f'- product_id={it["product_id"]} | {it["list_price"]}')
             print(f'  img: {it["img_url"]}')
 
         print("\nMensaje a publicar:\n")
@@ -193,7 +188,7 @@ if __name__ == "__main__":
 
         #  Marcar en DB como publicado
         db.mark_facebook_posted_many([it["product_id"] for it in items])
-        print("DB OK: marcado facebook_featured_at para los productos publicados.")
+        print("DB OK: marcado facebook_featured_at 1 para los productos publicados.")
 
         print(f"\nCompleted. Publicados en este lote: {len(items)}")
 
