@@ -6,13 +6,13 @@ def main():
     conn = pyodbc.connect(DB_CONNECTION)
     cur = conn.cursor()
 
-    # Prueba 1: 1 fila de Products
+    #  1 fila de Products
     cur.execute(
         "SELECT TOP 1 product_id, featured, facebook_featured_at FROM Products")
     row = cur.fetchone()
     print("Products sample:", row)
 
-    # Prueba 2: 1 fila de ProductImages
+    # 1 fila de ProductImages
     cur.execute(
         "SELECT TOP 1 product_id, img_sequence, img_url FROM ProductImages")
     row = cur.fetchone()
